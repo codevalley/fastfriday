@@ -1,9 +1,12 @@
+"""Event type model definition."""
+
 from sqlalchemy import Column, Integer, String, JSON
 from sqlalchemy.orm import relationship
-from models.BaseModel import EntityMeta
+
+from models.BaseModel import Base
 
 
-class EventType(EntityMeta):
+class EventType(Base):
     """
     EventType represents a category of life events with its associated metadata
     and validation schema. Examples: Photo, Meal, Exercise, Sleep, Work, etc.

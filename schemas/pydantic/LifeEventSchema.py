@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, Any
 from pydantic import BaseModel, Field
 
 
@@ -12,13 +12,6 @@ class LifeEventBase(BaseModel):
     data: Dict[str, Any] = Field(
         ...,
         description="Event-specific data following the event type schema",
-    )
-    tags: Optional[List[str]] = Field(
-        default_factory=list,
-        description="Optional tags for categorization",
-    )
-    location: Optional[Dict[str, Any]] = Field(
-        default=None, description="Optional location data"
     )
 
     class Config:
@@ -45,10 +38,8 @@ class LifeEventCreate(LifeEventBase):
 class LifeEventUpdate(BaseModel):
     """Schema for updating an existing life event."""
 
-    timestamp: Optional[datetime] = None
-    data: Optional[Dict[str, Any]] = None
-    tags: Optional[List[str]] = None
-    location: Optional[Dict[str, Any]] = None
+    timestamp: datetime | None = None
+    data: Dict[str, Any] | None = None
 
     class Config:
         """Pydantic model configuration."""

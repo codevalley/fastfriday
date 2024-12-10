@@ -9,10 +9,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from models.BaseModel import EntityMeta
+from models.BaseModel import Base
 
 
-class LifeEvent(EntityMeta):
+class LifeEvent(Base):
     """
     LifeEvent represents a single event in a person's life.
     The event's specific data is stored in the JSON 'data' field,

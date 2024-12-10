@@ -32,8 +32,6 @@ class LifeEventService:
         db_event = LifeEvent(
             timestamp=event.timestamp,
             data=event.data,
-            tags=event.tags,
-            location=event.location,
             event_type_id=event.event_type_id,
         )
         db.add(db_event)
@@ -84,12 +82,6 @@ class LifeEventService:
             query = query.filter(
                 LifeEvent.timestamp <= end_date
             )
-
-        if filters.get("tags"):
-            for tag in filters["tags"]:
-                query = query.filter(
-                    LifeEvent.tags.contains([tag])
-                )
 
         db_events = query.offset(skip).limit(limit).all()
         return [
