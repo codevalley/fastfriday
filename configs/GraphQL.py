@@ -1,26 +1,12 @@
+from typing import Dict, Any
 from fastapi import Depends
-from strawberry.types import Info
+from sqlalchemy.orm import Session
 
-from services.AuthorService import AuthorService
-from services.BookService import BookService
+from configs.database import get_db
 
 
-# GraphQL Dependency Context
 async def get_graphql_context(
-    authorService: AuthorService = Depends(),
-    bookService: BookService = Depends(),
-):
-    return {
-        "authorService": authorService,
-        "bookService": bookService,
-    }
-
-
-# Extract AuthorService instance from GraphQL context
-def get_AuthorService(info: Info) -> AuthorService:
-    return info.context["authorService"]
-
-
-# Extract BookService instance from GraphQL context
-def get_BookService(info: Info) -> BookService:
-    return info.context["bookService"]
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Create GraphQL context with database session."""
+    return {"db": db}

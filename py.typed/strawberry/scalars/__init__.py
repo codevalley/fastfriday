@@ -1,0 +1,1 @@
+"""Strawberry scalar types."""

@@ -1,15 +1,17 @@
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 from strawberry import Schema
 from strawberry.fastapi import GraphQLRouter
 
 from configs.Environment import get_environment_variables
 from configs.GraphQL import get_graphql_context
+from configs.database import init
 from metadata.Tags import Tags
-from models.BaseModel import init
-from routers.v1.AuthorRouter import AuthorRouter
-from routers.v1.BookRouter import BookRouter
+from routers.v1.EventRouter import router as EventRouter
+from routers.v1.EventTypeRouter import (
+    router as EventTypeRouter,
+)
 from schemas.graphql.Query import Query
-from schemas.graphql.Mutation import Mutation
+from schemas.graphql.mutations import Mutation
 
 # Application Environment Configuration
 env = get_environment_variables()
@@ -22,8 +24,8 @@ app = FastAPI(
 )
 
 # Add Routers
-app.include_router(AuthorRouter)
-app.include_router(BookRouter)
+app.include_router(EventRouter)
+app.include_router(EventTypeRouter)
 
 # GraphQL Schema and Application Instance
 schema = Schema(query=Query, mutation=Mutation)

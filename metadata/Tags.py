@@ -1,10 +1,12 @@
+"""API Tags Metadata"""
+
 Tags = [
     {
-        "name": "author",
-        "description": "Contains CRUD operation on Authors",
+        "name": "events",
+        "description": "Operations with life events. Create, read, update, and delete life events.",
     },
     {
-        "name": "book",
-        "description": "Contains CRUD operation on Books",
+        "name": "event-types",
+        "description": "Operations with event types. Manage different types of life events and their schemas.",
     },
 ]
