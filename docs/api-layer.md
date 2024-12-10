@@ -2,162 +2,215 @@
 
 ## Overview
 
-The API layer serves as the interface between the external world and our application's business logic. This project implements both REST and GraphQL APIs, providing flexibility in how clients can interact with the system.
+Friday's API layer provides both REST and GraphQL interfaces for interacting with life events. The API is designed to be intuitive, efficient, and flexible, allowing clients to record and retrieve life events in various formats.
 
 ## REST API Implementation
 
-### Router Structure
+### Event Types API
 
 ```python
-# routers/v1/BookRouter.py
-from fastapi import APIRouter, Depends
-from typing import List
+@router.get("/api/v1/event-types")
+async def list_event_types() -> List[EventType]:
+    """Get all available event types"""
 
-router = APIRouter(prefix="/api/v1/books", tags=["Books"])
+@router.get("/api/v1/event-types/{type_id}")
+async def get_event_type(type_id: int) -> EventType:
+    """Get a specific event type and its schema"""
 
-@router.post("/")
-async def create_book(
-    book_data: BookCreate,
-    service: BookService = Depends(get_book_service)
-) -> Book:
-    return await service.create_book(book_data.dict())
-
-@router.get("/{book_id}")
-async def get_book(
-    book_id: int,
-    service: BookService = Depends(get_book_service)
-) -> Book:
-    return await service.get_book(book_id)
+@router.post("/api/v1/event-types")
+async def create_event_type(event_type: EventTypeCreate) -> EventType:
+    """Create a new event type"""
 ```
 
-### Key Features
+### Life Events API
 
-1. **Versioning**
-   - API versioning through URL prefixes
-   - Separate routers for different versions
-   - Easy to maintain backward compatibility
+```python
+@router.post("/api/v1/events")
+async def create_event(event: LifeEventCreate) -> LifeEvent:
+    """Record a new life event"""
 
-2. **Dependency Injection**
-   - Services injected via FastAPI's dependency system
-   - Clean separation of concerns
-   - Easy to test and mock dependencies
+@router.get("/api/v1/events")
+async def list_events(
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    event_type: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0
+) -> List[LifeEvent]:
+    """Get life events with optional filtering"""
 
-3. **Request/Response Models**
-   - Pydantic models for validation
-   - Clear API contracts
-   - Automatic OpenAPI documentation
+@router.get("/api/v1/events/{event_id}")
+async def get_event(event_id: int) -> LifeEvent:
+    """Get a specific life event"""
+
+@router.delete("/api/v1/events/{event_id}")
+async def delete_event(event_id: int) -> None:
+    """Delete a life event"""
+```
 
 ## GraphQL API Implementation
 
 ### Schema Definition
 
-```python
-# schemas/graphql/Query.py
-import strawberry
-from typing import List
+```graphql
+type EventType {
+  id: ID!
+  name: String!
+  description: String
+  schema: JSON
+  icon: String
+  color: String
+  events: [LifeEvent!]!
+}
 
-@strawberry.type
-class Query:
-    @strawberry.field
-    async def books(self) -> List[Book]:
-        return await book_service.list_books()
+type LifeEvent {
+  id: ID!
+  timestamp: DateTime!
+  eventType: EventType!
+  data: JSON!
+}
 
-    @strawberry.field
-    async def book(self, id: int) -> Book:
-        return await book_service.get_book(id)
+type Query {
+  eventTypes: [EventType!]!
+  eventType(id: ID!): EventType
+  events(
+    startDate: DateTime
+    endDate: DateTime
+    eventType: String
+    limit: Int = 50
+    offset: Int = 0
+  ): [LifeEvent!]!
+  event(id: ID!): LifeEvent
+}
+
+type Mutation {
+  createEvent(
+    eventTypeId: ID!
+    timestamp: DateTime
+    data: JSON!
+  ): LifeEvent!
+  
+  deleteEvent(id: ID!): Boolean!
+  
+  createEventType(
+    name: String!
+    description: String
+    schema: JSON!
+    icon: String
+    color: String
+  ): EventType!
+}
 ```
 
-### Mutations
+## Request/Response Examples
 
-```python
-# schemas/graphql/Mutation.py
-@strawberry.type
-class Mutation:
-    @strawberry.mutation
-    async def create_book(self, input: BookInput) -> Book:
-        return await book_service.create_book(input.to_dict())
+### REST Examples
+
+1. Creating a Photo Event:
+```http
+POST /api/v1/events
+{
+  "event_type_id": 1,
+  "data": {
+    "photo_url": "https://example.com/photo.jpg",
+    "location": {
+      "lat": 37.7749,
+      "lng": -122.4194
+    },
+    "caption": "Beautiful sunset"
+  }
+}
+```
+
+2. Querying Events:
+```http
+GET /api/v1/events?event_type=exercise&start_date=2024-01-01T00:00:00Z
+```
+
+### GraphQL Examples
+
+1. Querying Events with Type Information:
+```graphql
+query {
+  events(eventType: "exercise", limit: 10) {
+    id
+    timestamp
+    eventType {
+      name
+      icon
+    }
+    data
+  }
+}
+```
+
+2. Creating a Meal Event:
+```graphql
+mutation {
+  createEvent(
+    eventTypeId: 2
+    data: {
+      meal_type: "lunch",
+      foods: [
+        {
+          name: "Salad",
+          quantity: "1 bowl",
+          calories: 200
+        }
+      ]
+    }
+  ) {
+    id
+    timestamp
+    data
+  }
+}
 ```
 
 ## API Features
 
-1. **Dual API Support**
-   - REST endpoints for traditional access
-   - GraphQL for flexible queries
-   - Consistent business logic across both
+1. **Data Validation**
+   - JSON Schema validation per event type
+   - Type checking and required fields
+   - Custom validation rules
 
-2. **Documentation**
-   - OpenAPI (Swagger) for REST
-   - GraphQL Playground
-   - Auto-generated documentation
+2. **Query Flexibility**
+   - Temporal filtering
+   - Event type filtering
+   - Pagination support
+   - Rich GraphQL queries
 
-3. **Error Handling**
+3. **Performance**
+   - Efficient database queries
+   - Proper indexing
+   - Response caching where appropriate
+
+4. **Error Handling**
    - Consistent error responses
-   - HTTP status codes for REST
-   - GraphQL error types
+   - Detailed validation errors
+   - Proper HTTP status codes
 
-## Implementation Details
+## Security Considerations
 
-### REST Endpoints
+1. **Authentication**
+   - JWT-based authentication
+   - Secure token handling
+   - Session management
 
-1. **Books API**
-   ```
-   POST   /api/v1/books          # Create book
-   GET    /api/v1/books          # List books
-   GET    /api/v1/books/{id}     # Get book
-   PUT    /api/v1/books/{id}     # Update book
-   DELETE /api/v1/books/{id}     # Delete book
-   ```
+2. **Authorization**
+   - Event ownership validation
+   - Role-based access control
+   - Resource-level permissions
 
-2. **Authors API**
-   ```
-   POST   /api/v1/authors        # Create author
-   GET    /api/v1/authors        # List authors
-   GET    /api/v1/authors/{id}   # Get author
-   PUT    /api/v1/authors/{id}   # Update author
-   DELETE /api/v1/authors/{id}   # Delete author
-   ```
+3. **Data Protection**
+   - Input sanitization
+   - Output encoding
+   - Rate limiting
 
-### GraphQL Operations
+## Documentation
 
-1. **Queries**
-   ```graphql
-   query {
-     books {
-       id
-       title
-       authors {
-         name
-       }
-     }
-   }
-   ```
-
-2. **Mutations**
-   ```graphql
-   mutation {
-     createBook(input: {
-       title: "New Book"
-       description: "Description"
-     }) {
-       id
-       title
-     }
-   }
-   ```
-
-## Clean Architecture Integration
-
-1. **Interface Adapters**
-   - Converts between API and domain models
-   - Handles HTTP/GraphQL specific logic
-   - Maintains clean architecture boundaries
-
-2. **Dependency Flow**
-   - API layer depends on services
-   - No direct database access
-   - Follows dependency rule
-
-3. **Validation**
-   - Input validation at API level
-   - Business validation in services
-   - Clear separation of concerns 
+The API is documented using:
+1. OpenAPI (Swagger) for REST endpoints
+2. GraphQL Playground for GraphQL interface
+3. Automatic schema generation
+4. Interactive documentation at `/docs` and `/graphql`

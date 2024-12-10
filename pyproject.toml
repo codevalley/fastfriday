@@ -1,3 +1,19 @@
+[project]
+name = "friday"
+version = "1.0.0"
+description = "Your Personal Life Logger API - Record and analyze your daily life events"
+authors = [
+    {name = "Narayan", email = ""}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+keywords = ["life-logger", "personal-analytics", "fastapi", "graphql"]
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [tool.black]
 line-length = 60
 

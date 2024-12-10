@@ -12,7 +12,10 @@ Target: Friday - Your Personal Life Logger API
   - [x] Added metadata section
   - [x] Updated Python version
   - [x] Added convenient scripts
-- [ ] `pyproject.toml` (if exists): Update project metadata
+- [x] `pyproject.toml`: Update project metadata
+  - [x] Added project section with name and description
+  - [x] Added build system configuration
+  - [x] Added keywords and license
 
 ### Documentation
 - [x] `README.md`: 
@@ -22,17 +25,17 @@ Target: Friday - Your Personal Life Logger API
   - [x] Add sections about life logging features
   - [x] Update API documentation examples to reflect life logging endpoints
 
-- [ ] `docs/*.md`:
-  - [ ] Update examples in `api-layer.md` to use life logging contexts
-  - [ ] Update domain examples in `domain-models.md` to reflect life events
-  - [ ] Update service examples in `application-services.md` with life logging use cases
+- [x] `docs/*.md`:
+  - [x] Update examples in `api-layer.md` to use life logging contexts
+  - [x] Update domain examples in `domain-models.md` to reflect life events
+  - [x] Update service examples in `application-services.md` with life logging use cases
   - [ ] Review and update all generic examples in architecture documentation
 
 ### Code Files
 - [ ] Database table names in models (if using generic names)
   - [ ] Rename `books` to `life_events`
   - [ ] Rename `authors` to `event_categories`
-  - [ ] Update association table name
+  - [ ] Update association table name to `event_tag_association`
 - [ ] API route prefixes in routers
   - [ ] Update from `/api/v1/books` to `/api/v1/events`
   - [ ] Update from `/api/v1/authors` to `/api/v1/categories`
@@ -71,28 +74,51 @@ Target: Friday - Your Personal Life Logger API
 ## Next Steps
 1. ✓ Review and prioritize these changes
 2. ✓ Create specific tasks for each change
-3. In Progress: Implement changes systematically, starting with core documentation
-4. [ ] Update tests to reflect new branding and domain context
-5. [ ] Review and update API documentation with new examples
+3. ✓ Update core documentation
+4. → Update API Layer Implementation (next)
+   - [ ] Create/update API routes for events
+   - [ ] Update GraphQL schema
+   - [ ] Implement event validation
+   - [ ] Add filtering and pagination
+5. [ ] Update tests to reflect new branding and domain context
+6. [ ] Review and update API documentation with new examples
 
 ## Domain Model Changes
-- [ ] Define core entities:
-  - [ ] LifeEvent (replaces Book)
+- [x] Define core entities:
+  - [x] LifeEvent
     - id: Integer
-    - title: String
+    - timestamp: DateTime (indexed)
+    - event_type_id: ForeignKey
+    - data: JSON
+  - [x] EventType
+    - id: Integer
+    - name: String (unique)
     - description: String
-    - timestamp: DateTime
-    - location: Optional[String]
-    - mood: Optional[String]
-    - category_id: ForeignKey
-  - [ ] EventCategory (replaces Author)
-    - id: Integer
-    - name: String
-    - description: String
-    - color: Optional[String]
-  - [ ] EventTag
-    - id: Integer
-    - name: String
-  - [ ] EventTagAssociation
-    - event_id: ForeignKey
-    - tag_id: ForeignKey
+    - schema: JSON (for data validation)
+    - icon: String
+    - color: String (hex)
+    - events: List[LifeEvent]
+
+## Example Event Types (Implemented in seeds/event_types.py)
+1. PhotoEvent ✓
+2. MealEvent ✓
+3. ExerciseEvent ✓
+4. NoteEvent ✓
+5. SleepEvent ✓
+
+## Implementation Order
+1. ✓ Configuration Files (completed)
+2. ✓ Domain Models (completed)
+   - [x] Create EventType model
+   - [x] Create LifeEvent model
+   - [x] Create initial event type seeds
+3. → Documentation Updates (next)
+4. Database Schema Changes
+5. API Layer Updates
+6. Testing and Deployment
+
+## Next Steps
+1. Update documentation in `docs/` to reflect new domain model
+2. Create database migration for the new schema
+3. Update API endpoints for life event operations
+4. Add JSON Schema validation in the service layer

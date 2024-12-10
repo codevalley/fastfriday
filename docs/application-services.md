@@ -2,111 +2,222 @@
 
 ## Overview
 
-The application services layer implements the business logic and use cases of the application. Located in the `services/` directory, this layer orchestrates the flow of data between the domain layer and the outer layers while enforcing business rules.
+The application services layer implements the business logic and use cases for Friday's life logging functionality. Located in the `services/` directory, this layer orchestrates the flow of data and enforces business rules for life event recording and retrieval.
 
 ## Service Components
 
-### 1. Book Service
+### 1. Event Type Service
 
 ```python
-# services/BookService.py
-class BookService:
-    def __init__(self, repository: BookRepository):
+# services/EventTypeService.py
+class EventTypeService:
+    def __init__(self, repository: EventTypeRepository):
         self._repository = repository
 
-    async def create_book(self, book_data: dict) -> BookModel:
-        return await self._repository.create(book_data)
+    async def create_event_type(self, type_data: dict) -> EventType:
+        """Create a new event type with schema validation"""
+        # Validate JSON schema format
+        self._validate_schema(type_data.get('schema'))
+        return await self._repository.create(type_data)
 
-    async def get_book(self, book_id: int) -> BookModel:
-        return await self._repository.get_by_id(book_id)
+    async def get_event_type(self, type_id: int) -> EventType:
+        """Get event type by ID"""
+        return await self._repository.get_by_id(type_id)
 
-    async def list_books(self) -> List[BookModel]:
-        return await self._repository.get_all()
+    async def get_event_type_by_name(self, name: str) -> EventType:
+        """Get event type by unique name"""
+        return await self._repository.get_by_name(name)
 
-    # ... other methods
+    def _validate_schema(self, schema: dict) -> None:
+        """Validate that the provided JSON schema is valid"""
+        try:
+            jsonschema.validate({}, schema)  # Validate empty object to check schema
+        except jsonschema.exceptions.SchemaError as e:
+            raise ValidationError(f"Invalid JSON schema: {str(e)}")
 ```
 
-### 2. Author Service
+### 2. Life Event Service
 
 ```python
-# services/AuthorService.py
-class AuthorService:
-    def __init__(self, repository: AuthorRepository):
-        self._repository = repository
+# services/LifeEventService.py
+class LifeEventService:
+    def __init__(
+        self,
+        event_repository: LifeEventRepository,
+        type_service: EventTypeService
+    ):
+        self._repository = event_repository
+        self._type_service = type_service
 
-    async def create_author(self, author_data: dict) -> AuthorModel:
-        return await self._repository.create(author_data)
+    async def create_event(self, event_data: dict) -> LifeEvent:
+        """Create a new life event with data validation"""
+        # Get event type and validate data against schema
+        event_type = await self._type_service.get_event_type(
+            event_data['event_type_id']
+        )
+        self._validate_event_data(event_type.schema, event_data['data'])
+        return await self._repository.create(event_data)
 
-    async def get_author(self, author_id: int) -> AuthorModel:
-        return await self._repository.get_by_id(author_id)
+    async def get_events(
+        self,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        event_type: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> List[LifeEvent]:
+        """Get life events with filtering"""
+        filters = {
+            'start_date': start_date,
+            'end_date': end_date,
+            'event_type': event_type,
+            'limit': limit,
+            'offset': offset
+        }
+        return await self._repository.get_filtered(filters)
 
-    # ... other methods
+    def _validate_event_data(self, schema: dict, data: dict) -> None:
+        """Validate event data against its type's schema"""
+        try:
+            jsonschema.validate(data, schema)
+        except jsonschema.exceptions.ValidationError as e:
+            raise ValidationError(f"Invalid event data: {str(e)}")
 ```
 
 ## Key Responsibilities
 
-1. **Use Case Implementation**
-   - Implements application-specific business rules
-   - Coordinates between different domain objects
-   - Manages transactions and data consistency
+1. **Data Validation**
+   - JSON Schema validation for event types
+   - Event data validation against type schemas
+   - Input data sanitization and normalization
 
-2. **Data Flow Orchestration**
-   - Controls the flow of data to and from repositories
-   - Transforms data between layers when necessary
-   - Handles business logic validation
+2. **Business Logic**
+   - Event creation and retrieval logic
+   - Temporal data management
+   - Event type management
 
-3. **Dependency Management**
-   - Uses dependency injection for repositories
-   - Maintains loose coupling between layers
-   - Facilitates testing and maintenance
+3. **Data Transformation**
+   - Date/time handling and timezone conversion
+   - Data format standardization
+   - Response formatting
 
 ## Service Layer Patterns
 
-### 1. Constructor Injection
+### 1. Schema Validation
 
 ```python
-def __init__(self, repository: Repository):
-    self._repository = repository
+def _validate_event_data(self, schema: dict, data: dict) -> None:
+    try:
+        jsonschema.validate(data, schema)
+    except jsonschema.exceptions.ValidationError as e:
+        raise ValidationError(f"Invalid event data: {str(e)}")
 ```
 
-- Enables dependency injection
-- Facilitates unit testing
-- Maintains loose coupling
-
-### 2. Async/Await Pattern
+### 2. Temporal Filtering
 
 ```python
-async def get_book(self, book_id: int) -> BookModel:
-    return await self._repository.get_by_id(book_id)
+async def get_events_by_timerange(
+    self,
+    start: datetime,
+    end: datetime
+) -> List[LifeEvent]:
+    return await self._repository.get_by_timerange(start, end)
 ```
 
-- Handles asynchronous operations
-- Improves performance
-- Maintains scalability
-
-### 3. Error Handling
+### 3. Event Type Management
 
 ```python
-async def get_book(self, book_id: int) -> BookModel:
-    book = await self._repository.get_by_id(book_id)
-    if not book:
-        raise NotFoundException(f"Book with id {book_id} not found")
-    return book
+async def get_events_by_type(
+    self,
+    type_name: str,
+    limit: int = 50
+) -> List[LifeEvent]:
+    event_type = await self._type_service.get_event_type_by_name(type_name)
+    return await self._repository.get_by_type(event_type.id, limit)
 ```
 
-## Integration with Clean Architecture
+## Integration Examples
 
-1. **Dependency Rule Compliance**
-   - Depends only on the domain layer
-   - No knowledge of outer layers
-   - Uses interfaces for external dependencies
+### 1. Creating a Photo Event
 
-2. **Use Case Implementation**
-   - Each service method represents a use case
-   - Clear and focused responsibility
-   - Business logic encapsulation
+```python
+# Example of creating a photo event
+photo_data = {
+    "event_type_id": 1,  # photo type
+    "data": {
+        "photo_url": "https://example.com/photo.jpg",
+        "location": {"lat": 37.7749, "lng": -122.4194},
+        "caption": "Beautiful sunset"
+    }
+}
 
-3. **Testing Strategy**
-   - Easy to mock dependencies
-   - Clear boundaries for unit tests
-   - Isolated business logic testing 
+event = await life_event_service.create_event(photo_data)
+```
+
+### 2. Querying Exercise Events
+
+```python
+# Get today's exercise events
+today = datetime.now().date()
+exercises = await life_event_service.get_events(
+    start_date=today,
+    event_type="exercise",
+    limit=10
+)
+```
+
+## Error Handling
+
+1. **Validation Errors**
+   - Schema validation errors
+   - Data format errors
+   - Required field validation
+
+2. **Business Logic Errors**
+   - Invalid event types
+   - Date range errors
+   - Resource not found
+
+3. **System Errors**
+   - Database errors
+   - External service errors
+   - Timeout handling
+
+## Testing Strategy
+
+1. **Unit Tests**
+   - Schema validation tests
+   - Business logic tests
+   - Error handling tests
+
+2. **Integration Tests**
+   - Repository integration
+   - Event type validation
+   - Temporal query tests
+
+3. **Mock Examples**
+```python
+@pytest.mark.asyncio
+async def test_create_event():
+    # Mock dependencies
+    event_repo = Mock(spec=LifeEventRepository)
+    type_service = Mock(spec=EventTypeService)
+    
+    # Setup test data
+    event_type = EventType(
+        id=1,
+        name="test",
+        schema={"type": "object"}
+    )
+    type_service.get_event_type.return_value = event_type
+    
+    # Create service with mocks
+    service = LifeEventService(event_repo, type_service)
+    
+    # Test event creation
+    event_data = {"event_type_id": 1, "data": {}}
+    await service.create_event(event_data)
+    
+    # Verify calls
+    event_repo.create.assert_called_once_with(event_data)
+``` 

@@ -2,107 +2,177 @@
 
 ## Overview
 
-The domain models represent the core business entities in our application. They are located in the `models/` directory and are designed to be independent of any external frameworks or libraries.
+Friday's domain model is built around the concept of life events - discrete moments or activities in a person's life that they want to record and analyze. The model is designed to be flexible and extensible, allowing for various types of life events to be recorded with their specific data structures.
 
 ## Core Entities
 
-### 1. Book Model
+### EventType
+
+EventType defines a category of life events and provides metadata about how these events should be structured and displayed.
 
 ```python
-# models/BookModel.py
-class BookModel(Base):
-    __tablename__ = "books"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String)
-    description = Column(String)
-    authors = relationship("AuthorModel", secondary="book_author_association")
+class EventType:
+    id: Integer           # Primary key
+    name: String         # Unique identifier (e.g., "photo", "meal")
+    description: String  # Human-readable description
+    schema: JSON        # JSON Schema for validating event data
+    icon: String        # UI icon identifier
+    color: String       # Hex color code for UI
+    events: List[LifeEvent]  # Related life events
 ```
 
-The Book entity represents a book in our system with:
-- Unique identifier
-- Title and description
-- Many-to-many relationship with authors
+#### JSON Schema Validation
+Each EventType includes a JSON schema that defines the structure and validation rules for its associated events. For example:
 
-### 2. Author Model
+```json
+{
+    "name": "meal",
+    "schema": {
+        "type": "object",
+        "required": ["meal_type", "foods"],
+        "properties": {
+            "meal_type": {
+                "type": "string",
+                "enum": ["breakfast", "lunch", "dinner", "snack"]
+            },
+            "foods": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "quantity": {"type": "string"},
+                        "calories": {"type": "number"}
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+### LifeEvent
+
+LifeEvent represents a single moment or activity in a person's life. It combines fixed metadata with flexible JSON data.
 
 ```python
-# models/AuthorModel.py
-class AuthorModel(Base):
-    __tablename__ = "authors"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String)
-    books = relationship("BookModel", secondary="book_author_association")
+class LifeEvent:
+    id: Integer          # Primary key
+    timestamp: DateTime  # When the event occurred (indexed)
+    event_type_id: Integer  # Reference to EventType
+    data: JSON          # Event-specific data following type's schema
+    event_type: EventType   # Related event type
 ```
 
-The Author entity represents an author with:
-- Unique identifier
-- Name
-- Many-to-many relationship with books
+#### Example Event Data
+```json
+// Photo Event
+{
+    "photo_url": "https://example.com/photo.jpg",
+    "location": {
+        "lat": 37.7749,
+        "lng": -122.4194
+    },
+    "caption": "Beautiful sunset at Golden Gate Bridge"
+}
 
-### 3. Book-Author Association
+// Exercise Event
+{
+    "type": "running",
+    "duration": 1800,
+    "distance": 5.2,
+    "heart_rate": {
+        "avg": 145,
+        "max": 165
+    }
+}
+```
+
+## Design Decisions
+
+1. **Flexible Data Storage**
+   - Using JSON for event data allows for:
+     - Different data structures per event type
+     - Easy addition of new event types
+     - Schema evolution without database migrations
+     - Rich data storage with nested structures
+
+2. **Schema Validation**
+   - JSON Schema in EventType ensures:
+     - Data consistency
+     - Type safety
+     - Required field validation
+     - Enumerated values where appropriate
+
+3. **Performance Considerations**
+   - Indexed fields:
+     - `timestamp` for temporal queries
+     - `event_type_id` for filtering
+     - `id` for lookups
+   - Timezone support in timestamps
+
+4. **Relationships**
+   - One-to-many between EventType and LifeEvent
+   - Cascade deletion of events when type is deleted
+   - Bidirectional relationships for efficient querying
+
+## Built-in Event Types
+
+Friday comes with several pre-defined event types:
+
+1. **Photo Events**
+   - Capture moments with images
+   - Support for location and captions
+   - Optional tagging
+
+2. **Meal Events**
+   - Track food consumption
+   - Categorize by meal type
+   - Record individual food items and calories
+
+3. **Exercise Events**
+   - Log physical activities
+   - Track duration and intensity
+   - Support for various exercise types
+
+4. **Note Events**
+   - Quick text notes or thoughts
+   - Support for tags and mood
+   - Minimal structure for flexibility
+
+5. **Sleep Events**
+   - Track sleep patterns
+   - Record quality and interruptions
+   - Support for sleep cycle analysis
+
+## Usage Examples
 
 ```python
-# models/BookAuthorAssociation.py
-class BookAuthorAssociation(Base):
-    __tablename__ = "book_author_association"
-    
-    book_id = Column(Integer, ForeignKey("books.id"), primary_key=True)
-    author_id = Column(Integer, ForeignKey("authors.id"), primary_key=True)
+# Creating a new meal event
+meal_event = LifeEvent(
+    event_type_id=2,  # meal type
+    data={
+        "meal_type": "lunch",
+        "foods": [
+            {"name": "Salad", "quantity": "1 bowl", "calories": 200},
+            {"name": "Grilled Chicken", "quantity": "200g", "calories": 330}
+        ],
+        "location": "Home",
+        "mood": "satisfied"
+    }
+)
+
+# Creating a new exercise event
+exercise_event = LifeEvent(
+    event_type_id=3,  # exercise type
+    data={
+        "type": "running",
+        "duration": 1800,  # in seconds
+        "distance": 5.2,   # in kilometers
+        "heart_rate": {
+            "avg": 145,
+            "max": 165
+        }
+    }
+)
 ```
-
-This model manages the many-to-many relationship between books and authors.
-
-## Domain Model Characteristics
-
-1. **Pure Business Logic**
-   - Models contain only business rules and logic
-   - No dependencies on external frameworks
-   - No knowledge of persistence mechanisms
-
-2. **Relationship Management**
-   - Clear definition of entity relationships
-   - Proper encapsulation of data
-   - Bidirectional navigation capabilities
-
-3. **Validation Rules**
-   - Built-in data validation
-   - Business rule enforcement
-   - Type safety
-
-## Base Model
-
-```python
-# models/BaseModel.py
-from sqlalchemy.ext.declarative import declarative_base
-
-Base = declarative_base()
-
-def init():
-    """Initialize the models"""
-    Base.metadata.create_all(bind=engine)
-```
-
-The Base model:
-- Provides common functionality
-- Handles database initialization
-- Manages model metadata
-
-## Usage in Clean Architecture
-
-The domain models are:
-1. **Central to the Architecture**
-   - Core business rules reside here
-   - Other layers depend on these models
-   - Changes here affect the entire system
-
-2. **Framework Independent**
-   - No SQLAlchemy-specific logic in business rules
-   - Can be used with any persistence mechanism
-   - Easily testable in isolation
-
-3. **Single Responsibility**
-   - Each model represents one business concept
-   - Clear and focused responsibilities
-   - Easy to maintain and modify 
