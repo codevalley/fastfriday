@@ -10,6 +10,7 @@ mysqlclient = "==2.1.0"
 uvicorn = {extras = ["standard"], version = "==0.17.6"}
 python-dotenv = "==0.20.0"
 strawberry-graphql = {extras = ["fastapi"], version = "==0.114.0"}
+cython = "*"
 
 [dev-packages]
 pre-commit = "==2.18.1"
@@ -19,4 +20,17 @@ black = "==22.3.0"
 strawberry-graphql = {extras = ["debug-server"], version = "==0.114.0"}
 
 [requires]
-python_version = "3.8"
+python_version = "3.12"
+
+[pipenv]
+allow_prereleases = true
+
+[scripts]
+start = "uvicorn main:app --reload"
+test = "pytest"
+coverage = "pytest --cov-report xml --cov ."
+
+[metadata]
+name = "friday"
+description = "Your Personal Life Logger API - Record and analyze your daily life events"
+author = "Narayan"
