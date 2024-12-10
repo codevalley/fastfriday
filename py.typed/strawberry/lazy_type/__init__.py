@@ -1,1 +1,0 @@
-"""Strawberry lazy type resolution."""

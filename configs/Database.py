@@ -1,10 +1,10 @@
 from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.ext.declarative import declarative_base
 
 from configs.Environment import get_environment_variables
 
+# Initialize environment variables
 env = get_environment_variables()
 
 # Construct Database URL
@@ -17,7 +17,7 @@ DATABASE_URL = (
     f"{env.DATABASE_NAME}"
 )
 
-# Create SQLAlchemy engine
+# Create database engine
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
@@ -26,15 +26,14 @@ engine = create_engine(
 
 # Create session factory
 SessionLocal = sessionmaker(
-    autocommit=False, autoflush=False, bind=engine
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
 )
-
-# Create base class for declarative models
-Base = declarative_base()
 
 
 def get_db() -> Generator[Session, None, None]:
-    """Dependency for database session."""
+    """Get a database session."""
     db = SessionLocal()
     try:
         yield db
@@ -43,14 +42,7 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init() -> None:
-    """Initialize database models."""
-    # Import all models to ensure they're registered
-    from models.EventTypeModel import (
-        EventType,
-    )  # noqa: F401
-    from models.LifeEventModel import (
-        LifeEvent,
-    )  # noqa: F401
+    """Initialize database."""
+    from models.BaseModel import Base
 
-    # Create all tables
     Base.metadata.create_all(bind=engine)

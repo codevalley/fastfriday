@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field
 
 
@@ -38,8 +38,11 @@ class LifeEventCreate(LifeEventBase):
 class LifeEventUpdate(BaseModel):
     """Schema for updating an existing life event."""
 
-    timestamp: datetime | None = None
-    data: Dict[str, Any] | None = None
+    timestamp: Optional[datetime] = None
+    data: Optional[Dict[str, Any]] = None
+    event_type_id: Optional[int] = Field(
+        None, description="ID of the associated event type"
+    )
 
     class Config:
         """Pydantic model configuration."""
@@ -48,15 +51,15 @@ class LifeEventUpdate(BaseModel):
         arbitrary_types_allowed = True
 
 
-class LifeEventResponse(LifeEventBase):
-    """Schema for life event responses including database fields."""
+class LifeEventResponse(BaseModel):
+    """Response schema for life events."""
 
     id: int
+    timestamp: datetime
     event_type_id: int
-    event_name: str
+    data: Dict[str, Any]
 
     class Config:
-        """Pydantic model configuration."""
+        """Pydantic config."""
 
         orm_mode = True
-        arbitrary_types_allowed = True

@@ -1,12 +1,19 @@
 """Base model for all database entities."""
 
 from sqlalchemy.ext.declarative import declarative_base
-
-# Create the declarative base class
-Base = declarative_base()
+from sqlalchemy.orm import DeclarativeMeta
 
 
-class BaseModel(Base):
-    """Base model class with common functionality."""
+class ModelBase:
+    """Base class for all models."""
 
-    __abstract__ = True
+    class Config:
+        """SQLAlchemy model configuration."""
+
+        arbitrary_types_allowed = True
+        from_attributes = True
+
+
+Base = declarative_base(cls=ModelBase)
+
+__all__ = ["Base"]

@@ -1,129 +1,120 @@
-from typing import List, Optional, Dict, Any
-from sqlalchemy.orm import Session
+from typing import List, Optional
 from datetime import datetime
 
+from fastapi import Depends, HTTPException
 from models.LifeEventModel import LifeEvent
 from models.EventTypeModel import EventType
+
+from repositories.LifeEventRepository import (
+    LifeEventRepository,
+)
+from repositories.EventTypeRepository import (
+    EventTypeRepository,
+)
 from schemas.pydantic.LifeEventSchema import (
     LifeEventCreate,
     LifeEventUpdate,
-    LifeEventResponse,
 )
 
 
 class LifeEventService:
-    def __init__(self):
-        """Initialize service without database dependency."""
-        pass
+    life_event_repository: LifeEventRepository
+    event_type_repository: EventTypeRepository
 
-    def create_event(
-        self, event: LifeEventCreate, db: Session
-    ) -> LifeEventResponse:
-        """Create a new life event."""
+    def __init__(
+        self,
+        life_event_repository: LifeEventRepository = Depends(),
+        event_type_repository: EventTypeRepository = Depends(),
+    ) -> None:
+        self.life_event_repository = life_event_repository
+        self.event_type_repository = event_type_repository
+
+    def create(
+        self, event_data: LifeEventCreate
+    ) -> LifeEvent:
         # Verify event type exists
-        event_type = (
-            db.query(EventType)
-            .filter(EventType.id == event.event_type_id)
-            .first()
+        event_type = self.event_type_repository.get(
+            event_data.event_type_id
         )
         if not event_type:
-            raise ValueError("Event type not found")
+            raise HTTPException(
+                status_code=404,
+                detail="Event type not found",
+            )
 
-        db_event = LifeEvent(
-            timestamp=event.timestamp,
-            data=event.data,
-            event_type_id=event.event_type_id,
+        life_event = LifeEvent(
+            event_type_id=event_data.event_type_id,
+            timestamp=event_data.timestamp,
+            data=event_data.data,
         )
-        db.add(db_event)
-        db.commit()
-        db.refresh(db_event)
-        return LifeEventResponse.from_orm(db_event)
+        return self.life_event_repository.create(life_event)
 
-    def get_event(
-        self, event_id: int, db: Session
-    ) -> Optional[LifeEventResponse]:
-        """Get a life event by ID."""
-        db_event = (
-            db.query(LifeEvent)
-            .filter(LifeEvent.id == event_id)
-            .first()
-        )
-        if not db_event:
-            return None
-        return LifeEventResponse.from_orm(db_event)
+    def delete(self, event_id: int) -> None:
+        return self.life_event_repository.delete(event_id)
 
-    def get_events(
+    def get(self, event_id: int) -> LifeEvent:
+        event = self.life_event_repository.get(event_id)
+        if not event:
+            raise HTTPException(
+                status_code=404,
+                detail="Life event not found",
+            )
+        return event
+
+    def list(
         self,
-        filters: Dict[str, Any],
-        skip: int,
-        limit: int,
-        db: Session,
-    ) -> List[LifeEventResponse]:
-        """Get life events with filtering and pagination."""
-        query = db.query(LifeEvent)
-
-        if filters.get("event_type"):
-            query = query.join(EventType).filter(
-                EventType.name == filters["event_type"]
-            )
-
-        if filters.get("start_date"):
-            start_date = datetime.fromisoformat(
-                filters["start_date"]
-            )
-            query = query.filter(
-                LifeEvent.timestamp >= start_date
-            )
-
-        if filters.get("end_date"):
-            end_date = datetime.fromisoformat(
-                filters["end_date"]
-            )
-            query = query.filter(
-                LifeEvent.timestamp <= end_date
-            )
-
-        db_events = query.offset(skip).limit(limit).all()
-        return [
-            LifeEventResponse.from_orm(event)
-            for event in db_events
-        ]
-
-    def update_event(
-        self,
-        event_id: int,
-        event: LifeEventUpdate,
-        db: Session,
-    ) -> Optional[LifeEventResponse]:
-        """Update a life event."""
-        db_event = (
-            db.query(LifeEvent)
-            .filter(LifeEvent.id == event_id)
-            .first()
+        event_type_id: Optional[int] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        limit: Optional[int] = 100,
+        start: Optional[int] = 0,
+    ) -> List[LifeEvent]:
+        return self.life_event_repository.list(
+            limit=limit,
+            start=start,
+            event_type_id=event_type_id,
+            start_date=start_date,
+            end_date=end_date,
         )
-        if not db_event:
-            return None
 
-        update_data = event.dict(exclude_unset=True)
-        for field, value in update_data.items():
-            setattr(db_event, field, value)
+    def update(
+        self, event_id: int, event_data: LifeEventUpdate
+    ) -> LifeEvent:
+        current_event = self.get(event_id)
 
-        db.commit()
-        db.refresh(db_event)
-        return LifeEventResponse.from_orm(db_event)
+        # Update only provided fields
+        if event_data.timestamp is not None:
+            setattr(
+                current_event,
+                "timestamp",
+                event_data.timestamp,
+            )
+        if event_data.data is not None:
+            setattr(current_event, "data", event_data.data)
+        if (
+            hasattr(event_data, "event_type_id")
+            and event_data.event_type_id is not None
+        ):
+            event_type = self.event_type_repository.get(
+                event_data.event_type_id
+            )
+            if not event_type:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Event type not found",
+                )
+            setattr(
+                current_event,
+                "event_type_id",
+                event_data.event_type_id,
+            )
 
-    def delete_event(
-        self, event_id: int, db: Session
-    ) -> bool:
-        """Delete a life event."""
-        db_event = (
-            db.query(LifeEvent)
-            .filter(LifeEvent.id == event_id)
-            .first()
+        return self.life_event_repository.update(
+            event_id, current_event
         )
-        if not db_event:
-            return False
 
-        db.delete(db_event)
-        db.commit()
-        return True
+    def get_event_type(
+        self, event_id: int
+    ) -> Optional[EventType]:
+        event = self.get(event_id)
+        return event.event_type if event else None

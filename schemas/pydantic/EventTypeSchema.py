@@ -1,5 +1,5 @@
 from typing import Dict, Optional, Any
-from pydantic import BaseModel, Field, constr
+from pydantic import BaseModel, Field
 
 
 class EventTypeBase(BaseModel):
@@ -19,18 +19,16 @@ class EventTypeBase(BaseModel):
     icon: Optional[str] = Field(
         None, description="Icon identifier for UI"
     )
-    color: Optional[constr(regex="^#[0-9a-fA-F]{6}$")] = (
-        Field(
-            None,
-            description="Hex color code for UI",
-        )
+    color: Optional[str] = Field(
+        None,
+        description="Hex color code for UI",
+        pattern="^#[0-9a-fA-F]{6}$",
     )
 
     class Config:
         """Pydantic model configuration."""
 
         orm_mode = True
-        arbitrary_types_allowed = True
 
 
 class EventTypeCreate(EventTypeBase):
@@ -46,24 +44,33 @@ class EventTypeUpdate(BaseModel):
     description: Optional[str] = None
     event_schema: Optional[Dict[str, Any]] = None
     icon: Optional[str] = None
-    color: Optional[constr(regex="^#[0-9a-fA-F]{6}$")] = (
-        None
+    color: Optional[str] = Field(
+        None,
+        description="Hex color code for UI",
+        pattern="^#[0-9a-fA-F]{6}$",
     )
 
     class Config:
         """Pydantic model configuration."""
 
         orm_mode = True
-        arbitrary_types_allowed = True
 
 
-class EventTypeResponse(EventTypeBase):
-    """Schema for event type responses including database fields."""
+class EventTypeResponse(BaseModel):
+    """Response schema for event types."""
 
     id: int
+    name: str
+    description: Optional[str] = None
+    event_schema: Optional[Dict[str, Any]] = None
+    icon: Optional[str] = None
+    color: Optional[str] = Field(
+        None,
+        description="Hex color code for UI",
+        pattern="^#[0-9a-fA-F]{6}$",
+    )
 
     class Config:
-        """Pydantic model configuration."""
+        """Pydantic config."""
 
         orm_mode = True
-        arbitrary_types_allowed = True

@@ -1,38 +1,48 @@
 """Event type model definition."""
 
-from sqlalchemy import Column, Integer, String, JSON
-from sqlalchemy.orm import relationship
+from typing import Optional, List
+
+from sqlalchemy import (
+    Integer,
+    String,
+    JSON,
+)
+from sqlalchemy.orm import relationship, Mapped
+from sqlalchemy.sql.schema import Column
 
 from models.BaseModel import Base
 
 
 class EventType(Base):
-    """
-    EventType represents a category of life events with its associated metadata
-    and validation schema. Examples: Photo, Meal, Exercise, Sleep, Work, etc.
-    """
+    """Model for event types."""
 
     __tablename__ = "event_types"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(50), nullable=False, unique=True)
-    description = Column(String(200), nullable=True)
-    event_schema = Column(
+    id: Mapped[int] = Column(
+        Integer, primary_key=True, index=True
+    )
+    name: Mapped[str] = Column(
+        String, unique=True, nullable=False
+    )
+    description: Mapped[Optional[str]] = Column(
+        String, nullable=True
+    )
+    event_schema: Mapped[Optional[dict]] = Column(
         JSON, nullable=True
-    )  # JSON Schema for validating event data
-    icon = Column(
-        String(50), nullable=True
-    )  # Icon identifier for UI
-    color = Column(
-        String(7), nullable=True
-    )  # Hex color code
-
-    # Relationships
-    events = relationship(
-        "LifeEvent",
-        back_populates="event_type",
-        cascade="all, delete-orphan",
+    )
+    icon: Mapped[Optional[str]] = Column(
+        String, nullable=True
+    )
+    color: Mapped[Optional[str]] = Column(
+        String, nullable=True
     )
 
-    def __repr__(self):
+    # Relationships
+    events: Mapped[List["LifeEvent"]] = relationship(
+        "LifeEvent",
+        back_populates="event_type",
+        cascade="all, delete",
+    )
+
+    def __repr__(self) -> str:
         return f"<EventType {self.name}>"
